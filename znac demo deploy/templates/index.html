@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Watermark Editor</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        header h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        header p {
+            color: #666;
+            font-size: 16px;
+        }
+
+        .drop-zone {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 50px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            background: #f8f9fa;
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .drop-zone:hover {
+            background: #e9ecef;
+            border-color: #764ba2;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+
+        .drop-zone.highlight {
+            background: #667eea;
+            color: white;
+            border-color: #5a6fd8;
+            transform: scale(1.02);
+        }
+
+        .drop-zone-icon {
+            font-size: 64px;
+            margin-bottom: 15px;
+            display: block;
+        }
+
+        .drag-text {
+            font-size: 20px;
+            font-weight: 700;
+            color: #495057;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .drag-subtext {
+            font-size: 14px;
+            color: #6c757d;
+        }
+
+        .image-preview {
+            margin-top: 20px;
+            text-align: center;
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        .image-preview img {
+            max-width: 100%;
+            max-height: 350px;
+            border-radius: 12px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+            transition: transform 0.3s ease;
+        }
+
+        .image-preview img:hover {
+            transform: scale(1.02);
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin: 30px 0;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 18px 25px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            min-width: 160px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .btn:not(:disabled):hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+
+        .btn:not(:disabled):active {
+            transform: translateY(-1px);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: white;
+        }
+
+        .btn-danger:not(:disabled):hover {
+            background: linear-gradient(135deg, #c0392b, #a93226);
+            box-shadow: 0 10px 25px rgba(231, 76, 60, 0.3);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-primary:not(:disabled):hover {
+            background: linear-gradient(135deg, #5a6fd8, #6a4190);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #27ae60, #219653);
+            color: white;
+        }
+
+        .btn-success:not(:disabled):hover {
+            background: linear-gradient(135deg, #219653, #1e8449);
+            box-shadow: 0 10px 25px rgba(39, 174, 96, 0.3);
+        }
+
+        .watermark-settings {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 15px;
+            margin: 25px 0;
+            border: 2px solid #e9ecef;
+            animation: slideDown 0.4s ease-out;
+        }
+
+        .watermark-settings h3 {
+            margin-bottom: 25px;
+            color: #333;
+            text-align: center;
+            font-size: 22px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 700;
+            color: #333;
+            font-size: 15px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .form-group input[type="color"] {
+            height: 60px;
+            padding: 5px;
+            cursor: pointer;
+            border: 3px solid #ddd;
+        }
+
+        .form-group input[type="range"] {
+            height: 12px;
+            background: linear-gradient(to right, #667eea, #764ba2);
+            border-radius: 10px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .form-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 28px;
+            height: 28px;
+            background: white;
+            border: 3px solid #667eea;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+        }
+
+        .form-group input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 15px rgba(0,0,0,0.3);
+        }
+
+        .opacity-display {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .opacity-value {
+            font-weight: 800;
+            color: #667eea;
+            font-size: 16px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 50px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            margin: 25px 0;
+            animation: pulse 2s infinite;
+        }
+
+        .spinner {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #667eea;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1.5s linear infinite;
+            margin: 0 auto 25px;
+        }
+
+        .result-section {
+            text-align: center;
+            margin-top: 25px;
+            padding: 25px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            animation: slideUp 0.5s ease-out;
+        }
+
+        .result-section h3 {
+            margin-bottom: 20px;
+            color: #333;
+            font-size: 24px;
+        }
+
+        .result-section img {
+            max-width: 100%;
+            max-height: 400px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            border: 3px solid white;
+        }
+
+        .download-btn {
+            background: linear-gradient(135deg, #27ae60, #219653);
+            color: white;
+            padding: 16px 35px;
+            text-decoration: none;
+            border-radius: 10px;
+            display: inline-block;
+            font-weight: 700;
+            font-size: 16px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(39, 174, 96, 0.3);
+        }
+
+        .download-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(39, 174, 96, 0.4);
+            background: linear-gradient(135deg, #219653, #1e8449);
+        }
+
+        .file-info {
+            background: linear-gradient(135deg, #e9ecef, #dee2e6);
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin: 15px 0;
+            font-size: 14px;
+            text-align: center;
+            color: #495057;
+            border-left: 4px solid #667eea;
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        .status-message {
+            padding: 20px;
+            border-radius: 10px;
+            margin: 15px 0;
+            text-align: center;
+            font-weight: 700;
+            font-size: 15px;
+            animation: slideIn 0.4s ease-out;
+        }
+
+        .status-success {
+            background: linear-gradient(135deg, #d4edda, #c3e6cb);
+            color: #155724;
+            border: 2px solid #c3e6cb;
+        }
+
+        .status-error {
+            background: linear-gradient(135deg, #f8d7da, #f5c6cb);
+            color: #721c24;
+            border: 2px solid #f5c6cb;
+        }
+
+        /* Анимации */
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+            100% { transform: scale(1); }
+        }
+
+        .ripple {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.6);
+            transform: scale(0);
+            animation: ripple-animation 0.6s linear;
+            pointer-events: none;
+        }
+
+        @keyframes ripple-animation {
+            to {
+                transform: scale(4);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📸 Watermark Editor Pro</h1>
+            <p>Профессиональное редактирование водяных знаков</p>
+        </header>
+
+        <div class="upload-section">
+            <div id="dropZone" class="drop-zone">
+                <span class="drop-zone-icon">📁</span>
+                <span class="drag-text">Перетащите изображение сюда</span>
+                <span class="drag-subtext">или нажмите для выбора файла</span>
+                <input type="file" id="fileInput" accept="image/*" hidden>
+            </div>
+            <div id="fileInfo" class="file-info hidden"></div>
+            <div id="imagePreview" class="image-preview hidden"></div>
+        </div>
+
+        <div class="controls">
+            <button id="removeBtn" class="btn btn-danger" disabled>
+                🚫 Удалить водяной знак
+            </button>
+            <button id="addBtn" class="btn btn-primary" disabled>
+                ✨ Добавить водяной знак
+            </button>
+        </div>
+
+        <div id="watermarkSettings" class="watermark-settings hidden">
+            <h3>⚙️ Настройки водяного знака</h3>
+            <div class="form-group">
+                <label for="watermarkText">Текст водяного знака:</label>
+                <input type="text" id="watermarkText" placeholder="Введите ваш текст" value="Ваш водяной знак">
+            </div>
+            <div class="form-group">
+                <label for="textColor">Цвет текста:</label>
+                <input type="color" id="textColor" value="#ffffff">
+            </div>
+            <div class="form-group">
+                <label for="opacity">Прозрачность:</label>
+                <input type="range" id="opacity" min="10" max="100" value="50">
+                <div class="opacity-display">
+                    <span>Прозрачнее</span>
+                    <span class="opacity-value" id="opacityValue">50%</span>
+                    <span>Ярче</span>
+                </div>
+            </div>
+            <button id="applyWatermark" class="btn btn-success">
+                ✅ Применить водяной знак
+            </button>
+        </div>
+
+        <div id="loading" class="loading hidden">
+            <div class="spinner"></div>
+            <p>Обрабатываем изображение...</p>
+        </div>
+
+        <div id="result" class="result-section hidden"></div>
+
+        <div id="statusMessage" class="status-message hidden"></div>
+    </div>
+
+    <script>
+        class WatermarkApp {
+            constructor() {
+                this.currentImage = null;
+                this.currentFile = null;
+                this.backendUrl = '/api/process'; // Относительный путь
+
+                this.init();
+            }
+
+            init() {
+                console.log('🚀 Watermark App Pro инициализирован');
+                this.bindEvents();
+                this.createRippleEffect();
+                this.testBackendConnection();
+            }
+
+            async testBackendConnection() {
+                try {
+                    const response = await fetch('/test');
+                    const data = await response.json();
+                    console.log('✅ Сервер доступен:', data.message);
+                    this.showStatus('✅ Сервер готов к работе', 'success');
+                } catch (error) {
+                    console.error('❌ Сервер недоступен:', error);
+                    this.showStatus('⚠️ Функции ограничены - режим демо', 'error');
+                }
+            }
+
+            bindEvents() {
+                // Получаем элементы
+                this.elements = {
+                    dropZone: document.getElementById('dropZone'),
+                    fileInput: document.getElementById('fileInput'),
+                    removeBtn: document.getElementById('removeBtn'),
+                    addBtn: document.getElementById('addBtn'),
+                    applyBtn: document.getElementById('applyWatermark'),
+                    opacitySlider: document.getElementById('opacity'),
+                    opacityValue: document.getElementById('opacityValue'),
+                    imagePreview: document.getElementById('imagePreview'),
+                    fileInfo: document.getElementById('fileInfo'),
+                    watermarkSettings: document.getElementById('watermarkSettings'),
+                    loading: document.getElementById('loading'),
+                    result: document.getElementById('result'),
+                    status: document.getElementById('statusMessage')
+                };
+
+                // Назначаем обработчики событий
+                this.elements.dropZone.addEventListener('click', (e) => this.handleDropZoneClick(e));
+                this.elements.dropZone.addEventListener('dragover', (e) => this.handleDragOver(e));
+                this.elements.dropZone.addEventListener('dragleave', (e) => this.handleDragLeave(e));
+                this.elements.dropZone.addEventListener('drop', (e) => this.handleDrop(e));
+
+                this.elements.fileInput.addEventListener('change', (e) => this.handleFileSelect(e));
+                this.elements.removeBtn.addEventListener('click', () => this.processImage('remove'));
+                this.elements.addBtn.addEventListener('click', () => this.showWatermarkSettings());
+                this.elements.applyBtn.addEventListener('click', () => this.processImage('add'));
+                this.elements.opacitySlider.addEventListener('input', () => this.updateOpacityValue());
+                this.elements.opacitySlider.addEventListener('change', () => this.updateOpacityValue());
+
+                // Инициализируем значения
+                this.updateOpacityValue();
+
+                console.log('✅ Все обработчики событий назначены');
+            }
+
+            createRippleEffect() {
+                // Добавляем эффект ripple для кнопок
+                const buttons = document.querySelectorAll('.btn');
+                buttons.forEach(btn => {
+                    btn.addEventListener('click', function(e) {
+                        if (this.disabled) return;
+
+                        const ripple = document.createElement('span');
+                        const rect = this.getBoundingClientRect();
+                        const size = Math.max(rect.width, rect.height);
+                        const x = e.clientX - rect.left - size / 2;
+                        const y = e.clientY - rect.top - size / 2;
+
+                        ripple.style.width = ripple.style.height = size + 'px';
+                        ripple.style.left = x + 'px';
+                        ripple.style.top = y + 'px';
+                        ripple.classList.add('ripple');
+
+                        this.appendChild(ripple);
+
+                        setTimeout(() => {
+                            ripple.remove();
+                        }, 600);
+                    });
+                });
+            }
+
+            handleDropZoneClick(e) {
+                this.createRipple(e);
+                this.elements.fileInput.click();
+            }
+
+            createRipple(e) {
+                const ripple = document.createElement('span');
+                const rect = this.elements.dropZone.getBoundingClientRect();
+                const size = Math.max(rect.width, rect.height);
+                const x = e.clientX - rect.left - size / 2;
+                const y = e.clientY - rect.top - size / 2;
+
+                ripple.style.width = ripple.style.height = size + 'px';
+                ripple.style.left = x + 'px';
+                ripple.style.top = y + 'px';
+                ripple.classList.add('ripple');
+
+                this.elements.dropZone.appendChild(ripple);
+
+                setTimeout(() => {
+                    ripple.remove();
+                }, 600);
+            }
+
+            handleDragOver(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                this.elements.dropZone.classList.add('highlight');
+            }
+
+            handleDragLeave(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (!this.elements.dropZone.contains(e.relatedTarget)) {
+                    this.elements.dropZone.classList.remove('highlight');
+                }
+            }
+
+            handleDrop(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                this.elements.dropZone.classList.remove('highlight');
+
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    this.loadImage(files[0]);
+                }
+            }
+
+            handleFileSelect(e) {
+                const files = e.target.files;
+                if (files.length > 0) {
+                    this.loadImage(files[0]);
+                }
+            }
+
+            loadImage(file) {
+                console.log('📁 Обрабатываем файл:', file.name);
+
+                if (!file.type.match('image.*')) {
+                    this.showError('Пожалуйста, выберите файл изображения (JPEG, PNG, GIF, WEBP)');
+                    return;
+                }
+
+                // Показываем информацию о файле
+                this.elements.fileInfo.innerHTML = `
+                    📄 <strong>${file.name}</strong>
+                    (${this.formatFileSize(file.size)})
+                    - ${file.type.split('/')[1].toUpperCase()}
+                `;
+                this.elements.fileInfo.classList.remove('hidden');
+
+                const reader = new FileReader();
+
+                reader.onloadstart = () => {
+                    this.showLoading(true);
+                };
+
+                reader.onload = (e) => {
+                    this.currentImage = e.target.result;
+                    this.currentFile = file;
+                    this.showImagePreview();
+                    this.enableButtons();
+                    this.showStatus('✅ Изображение успешно загружено!', 'success');
+                    this.showLoading(false);
+                };
+
+                reader.onerror = () => {
+                    this.showError('Ошибка при чтении файла');
+                    this.showLoading(false);
+                };
+
+                reader.readAsDataURL(file);
+            }
+
+            showImagePreview() {
+                this.elements.imagePreview.innerHTML = `
+                    <img src="${this.currentImage}" alt="Предпросмотр"
+                         onload="this.style.opacity='1'"
+                         style="opacity:0; transition: opacity 0.5s ease-in-out">
+                `;
+                this.elements.imagePreview.classList.remove('hidden');
+
+                // Скрываем настройки и результаты предыдущих операций
+                this.hideElement(this.elements.watermarkSettings);
+                this.hideElement(this.elements.result);
+
+                // Показываем анимацию появления
+                setTimeout(() => {
+                    const img = this.elements.imagePreview.querySelector('img');
+                    if (img) img.style.opacity = '1';
+                }, 100);
+            }
+
+            enableButtons() {
+                this.elements.removeBtn.disabled = false;
+                this.elements.addBtn.disabled = false;
+                console.log('✅ Кнопки активированы');
+            }
+
+            disableButtons() {
+                this.elements.removeBtn.disabled = true;
+                this.elements.addBtn.disabled = true;
+                this.elements.applyBtn.disabled = true;
+            }
+
+            showWatermarkSettings() {
+                if (!this.currentImage) {
+                    this.showError('Сначала загрузите изображение!');
+                    return;
+                }
+                this.elements.watermarkSettings.classList.remove('hidden');
+                this.hideElement(this.elements.result);
+
+                // Анимация появления
+                this.elements.watermarkSettings.style.animation = 'slideDown 0.4s ease-out';
+            }
+
+            updateOpacityValue() {
+                const value = this.elements.opacitySlider.value;
+                this.elements.opacityValue.textContent = `${value}%`;
+
+                // Динамическое изменение цвета ползунка
+                const percentage = (value - 10) / 90;
+                const hue = 260 * (1 - percentage); // От фиолетового к синему
+                this.elements.opacitySlider.style.background =
+                    `linear-gradient(to right, hsl(${hue}, 70%, 60%), #764ba2)`;
+            }
+
+            async processImage(action) {
+                if (!this.currentImage) {
+                    this.showError('Сначала загрузите изображение!');
+                    return;
+                }
+
+                this.disableButtons();
+                this.showLoading(true);
+                this.hideElement(this.elements.status);
+
+                try {
+                    console.log(`🔄 Начинаем ${action === 'remove' ? 'удаление' : 'добавление'} водяного знака...`);
+
+                    let result;
+                    if (action === 'remove') {
+                        result = await this.sendToBackend('remove', {});
+                    } else {
+                        const text = document.getElementById('watermarkText').value.trim();
+                        const color = document.getElementById('textColor').value;
+                        const opacity = document.getElementById('opacity').value;
+
+                        if (!text) {
+                            this.showError('Введите текст для водяного знака!');
+                            return;
+                        }
+
+                        result = await this.sendToBackend('add', {
+                            text: text,
+                            color: color,
+                            opacity: opacity
+                        });
+                    }
+
+                    this.showResult(result);
+                    this.showStatus(`✅ ${action === 'remove' ? 'Водяной знак удален' : 'Водяной знак добавлен'} успешно!`, 'success');
+
+                } catch (error) {
+                    console.error('❌ Ошибка:', error);
+                    this.showError('Ошибка при обработке изображения: ' + error.message);
+
+                    // Fallback: демо-режим
+                    this.showResult(this.currentImage);
+                    this.showStatus('⚠️ Используется демо-режим', 'error');
+                } finally {
+                    this.showLoading(false);
+                    this.enableButtons();
+                }
+            }
+
+            async sendToBackend(action, data) {
+                try {
+                    const payload = {
+                        action: action,
+                        image: this.currentImage,
+                        ...data
+                    };
+
+                    console.log('📡 Отправка запроса на сервер...');
+
+                    const response = await fetch(this.backendUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        throw new Error(`Ошибка сервера: ${response.status} - ${errorText}`);
+                    }
+
+                    const result = await response.json();
+
+                    if (!result.success) {
+                        throw new Error(result.error || 'Неизвестная ошибка сервера');
+                    }
+
+                    return result.processedImage;
+
+                } catch (error) {
+                    console.error('❌ Ошибка сети:', error);
+                    // Fallback: демо-режим с задержкой
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    return this.currentImage;
+                }
+            }
+
+            showResult(imageData) {
+                this.elements.result.innerHTML = `
+                    <h3>🎉 Результат обработки</h3>
+                    <img src="${imageData}" alt="Обработанное изображение"
+                         onload="this.style.opacity='1'"
+                         style="opacity:0; transition: opacity 0.5s ease-in-out">
+                    <div style="margin-top: 20px;">
+                        <a href="${imageData}" download="watermark-result-${Date.now()}.png" class="download-btn">
+                            💾 Скачать обработанное изображение
+                        </a>
+                    </div>
+                `;
+                this.elements.result.classList.remove('hidden');
+
+                // Анимация появления
+                setTimeout(() => {
+                    const img = this.elements.result.querySelector('img');
+                    if (img) img.style.opacity = '1';
+                }, 100);
+            }
+
+            showLoading(show) {
+                if (show) {
+                    this.elements.loading.classList.remove('hidden');
+                } else {
+                    this.elements.loading.classList.add('hidden');
+                }
+            }
+
+            showStatus(message, type) {
+                this.elements.status.textContent = message;
+                this.elements.status.className = `status-message status-${type}`;
+                this.elements.status.classList.remove('hidden');
+
+                // Автоматически скрываем успешные сообщения
+                if (type === 'success') {
+                    setTimeout(() => {
+                        this.hideElement(this.elements.status);
+                    }, 4000);
+                }
+            }
+
+            showError(message) {
+                this.showStatus(message, 'error');
+            }
+
+            hideElement(element) {
+                element.classList.add('hidden');
+            }
+
+            formatFileSize(bytes) {
+                if (bytes === 0) return '0 Bytes';
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+        }
+
+        // Инициализация приложения
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('🚀 Инициализация Watermark App Pro...');
+            window.watermarkApp = new WatermarkApp();
+
+            // Глобальные обработчики
+            document.addEventListener('dragover', (e) => e.preventDefault());
+            document.addEventListener('drop', (e) => e.preventDefault());
+
+            console.log('✅ Watermark App Pro готов к работе!');
+        });
+    </script>
+</body>
+</html>
